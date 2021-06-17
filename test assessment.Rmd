@@ -1,0 +1,482 @@
+---
+title: "Assessment 3"
+author: "Susie Tan, Kanchana MULGODA HEWAGE"
+date: "11/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#**Assessment-3 **
+
+##**How has Government been spending on Kids?**
+## ***by Gruop-7***
+
+Susie TAN
+
+Kanchna MULGODA HEWAGE
+![](IMG_1227s.jpg)
+##Executive Summary
+
+All countries throughout the world during their annual budgeting allocate funds for the needs of the child population of the country as that is kind of investing on the country’s future. Well-being and development of kids affect future economic and social health of the country. The focus research area in this report is to analyse how the United States government spending federal funds on kids. This research is quantitative research and secondary data which were collected by Urban Institute and Browns University was used for the analysis. Data analysing was done by using R studio software. It was found that that if there is no financial crisis US government always increased the portion allocated from their budget for kids. Further, California leads among other states when spending on kids and federal government spend more on education of children than any other spending sector on children. Based on the findings, researchers recommend that US government can group the spending sectors to few categories such as education, health etc; rather than having large number of categories. Further, US government to analyse the reasons for cities which are spend less on kids education as this may cause for parents to move to cities which are spend more on kids education and US government to analyse on how states funding for children are utilised and allocated in education to shape a better society for America.  
+
+
+
+##Introduction
+
+US government spend considerable amount on kids who are the future of the country. The selected dataset focuses on government spending in the US on children and education. The data was collected from 1997-2016 and It is a state by state breakdown of spending on education, unemployment, income security, and health on children. The data, specifically, is broken down by state, year, and dollar amount spent. The data were assembled by Julia Isaacs, Eleanor Lauderback, and Erica Greenberg of the Urban Institute, working in collaboration with Margot Jackson of Brown University for her study of public spending on children and class gaps in child development. This report focusses on how US government expend on kids and how it varied from state to state. Moreover, report will analyse about the expenditures in different sectors.
+
+##Data Set - US spending on Kids
+
+The data was compiled by the Urban Institute for #Tidy Tuesday.
+
+```{r}
+kids <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-15/kids.csv')
+```
+
+###Research question:
+
+The research question is to analyze how United States government spends government funds on kids.
+
+While focusing on the above main research question, the team has decided to find answers for the following questions in order to analyze the main research question. 
+  
+  1. What are the top three US states that spend more on kids and three states which have spent less on kids for the period of 1997-2016?
+  
+  2. What are the top highest and lowest expended sectors when spending on kids by US government for the period of 1997-2016?
+  
+  3. How has the government spending on the highest expended sector per child changed from 1997 to 2016.
+  
+  4.  What are the top three US states which have spent more on kids and three states which have spent less on kids for recent year(2016)
+  
+  5.  What is the highest expended sector throughout the years and recent year(2016)?
+ 
+
+###Data wrangling & visualization.
+
+Load the packages and inspect the Data
+
+```{r}
+library(tidyverse)
+library(skimr)
+library(scales)
+library(janitor)
+library(ggthemes)
+library(broom)
+library(caTools)
+library(mlbench)
+library(caret)
+theme_set(theme_light())
+```
+
+Use`skimr` package to provide summary statistics about the variables in the data frames.
+
+Key Takeaways:
+
+1. There are six variables in the dataset; out of which two variables are characters and four variables are numeric. There are 102 missing data from the 2007 dataset. These data does not add value to the analysis and can be removed from the variables.
+```{r}
+skim(kids)
+```
+ 
+2. There are 23 values under variable. These are the various sectors the US Government spent on kids as will be discussed in the following section. The tidykids codebook has detailed breakdown of each variable which can be found in https://jrosen48.github.io/tidykids/articles/tidykids-codebook.html.
+
+```{r}
+kids%>%
+  distinct(variable)
+```
+
+
+As there were data for 51 states, researchers decided to narrow it down for further analyzing. Therefore, selected the highest and lowest spending states according to the total expenditure on kids for the period between 1997 to 2016. 
+
+According to the data analyze, it was found that California, New York and Texas are the highest spending states on kids, and South Dakota, North Dakota  and Vermont are the less spending states. 
+
+Q1. What are the top three US states spend more on kids and three states which have expend less on kids for the period of 1997-2016?
+
+
+```{r}
+kids%>%
+  group_by(state,year)%>%
+  drop_na()%>%
+  summarise(total_expenditure=sum(inf_adj/1000000000))%>%
+  ungroup()%>%
+  mutate(state=fct_reorder(state,total_expenditure,sum))%>%
+  ggplot(aes(total_expenditure,state,fill=year))+geom_col()+
+  scale_x_continuous(labels=comma)+
+  labs(x="Total_expenditure(in Billions)",
+       y="States of USA")+
+  theme_light()
+```
+
+Then to further narrow down, the researchers checked the sector that US government has spent more on kids. As shown in the graph, the highest spend sector by the US government is primary and K-12 education. This is followed by the other health sector.
+
+
+Q2. What are the top highest and lowest expended sectors when spending on kids by US government for the period of 1997-2016?
+
+
+Q2. What are the sectors that are spent more/less by US States?
+
+#total expenditure according to the variable / by category.
+
+
+```{r}
+kids%>%
+  group_by(variable,year)%>%
+  summarise(total_expenditure=sum(inf_adj/1000000000))%>%
+  ungroup()%>%
+  mutate(variable=fct_reorder(variable,total_expenditure,sum))%>%
+  ggplot(aes(total_expenditure,variable,fill=variable))+geom_col()+
+  scale_x_continuous(label=comma)+
+  labs(x="Total_expenditure(in Billions)",
+       y="Expended on")
+```
+
+As PK12ed has been the sector which has the highest allocation through out the period, researchers analyze how it has changed during the captured period to get better understanding about the trends on spending in this sector by the federal government. 
+
+
+Q3. How the government spending on highest expended sector per child changes from 1997 to 2016.
+
+```{r}
+k12_data <- kids%>%filter(variable=="PK12ed")%>%
+  filter(year%in%c(1997,2016))%>%mutate(year = as.character(year))%>%
+  select(-raw,-inf_adj_perchild)%>%
+  pivot_wider(names_from = year, values_from = inf_adj)
+
+k12_perchild_data<- kids%>%filter(variable=="PK12ed")%>%
+  filter(year%in%c(1997,2016))%>%mutate(year = as.character(year))%>%
+  select(-raw,-inf_adj)%>%
+  pivot_wider(names_from = year, values_from = inf_adj_perchild)
+
+names(k12_data)<-c("state","variable","data1997","data2016")
+
+names(k12_perchild_data)<-c("state","variable","data1997","data2016")
+```
+
+
+```{r}
+k12_data%>%mutate(change = data2016-data1997)%>%
+  select(-variable)%>%
+  pivot_longer(data1997:data2016,names_to ="year", values_to = "adj_inf")%>%
+  ggplot(aes(x = adj_inf, y = reorder(state,change)))+
+  geom_point(aes(color = year),size = 3)+geom_line(size = 2,alpha = 0.1)+theme_classic()+
+  labs(x = "Government spending adjusted by inflation",
+       y = "State ordered by change in spending",
+       title = "How the government spending on K12 education changes from 1997 to 2016")+
+  scale_color_brewer(palette = "Paired")+
+  scale_x_continuous(labels = scales::comma)+
+  theme(plot.title = element_text(face = "bold", size = 11, margin = margin(50,0,5,0)))
+```
+
+```{r}
+k12_perchild_data%>%mutate(change = data2016-data1997)%>%
+  select(-variable)%>%
+  pivot_longer(data1997:data2016,names_to ="year", values_to = "adj_inf_perchild")%>%
+  ggplot(aes(x = adj_inf_perchild, y = reorder(state,change)))+
+  geom_point(aes(color = year),size = 3)+geom_line(size = 2,alpha = 0.1)+theme_classic()+
+  labs(x = "Government spending perchild adjusted by inflation",
+       y = "State ordered by change in spending",
+       title = "How the government spending on K12 education perchild changes from 1997 to 2016")+
+  scale_color_brewer(palette = "Paired")+
+  scale_x_continuous(labels = scales::comma)+
+  theme(plot.title = element_text(face = "bold", size = 11, margin = margin(50,0,5,0)))
+```
+
+## Further exploration with trend analysis
+
+To further understand how the US government has spent on kids, the researchers select California state's spending and plot a quick and dirty plot of the inflation adjusted spending for all the 23 variables for that particular state.  
+
+Key takeaways for insights on the following trend analysis are:
+
+a. California state has funded large amount of spending at two variables; namely PK12ed and other_health.
+b. While PK12ed has been leading the way of spending pre 2014, other_health seemed to take the lead in government spending by 2015. 
+c. There has been a large spike in unemp spending around 2008-2014.
+d. A further exploration of the context around the global shows that the global financial crisis and Great Recession around 2007-2009 has caused a great change in how US government spent available funds.
+
+```{r}
+kids%>%
+  filter(state=='California')%>%
+  ggplot(
+    aes(x=year,
+        y=inf_adj,
+        color=variable
+        )
+  )+
+  geom_line()
+```
+
+The researchers also analyses the trend of the US government overall inflated adjusted spending on PK12ed based.  There seems to be an upward and positive trend over year on kids spending.  This means that the government has generally increased its overall spending for PK12ed over the years under review.  Besides, there has been a positive relationship and similar pattern of spending trends among all the states' spending on kids throughout 1997 to 2016.
+
+a. Total spending on education - PK12ed
+```{r}
+kids%>%
+  group_by(year)%>%
+  filter(variable =="PK12ed")%>%
+  summarise(total=sum(inf_adj)/1000000)%>%
+  ggplot(
+    aes(year,total))+
+  geom_line()+
+  scale_y_continuous(labels=dollar)+
+  labs(y="Total Expenditure (in Billions)")
+  
+```  
+
+
+b. Total spending on education "PK12ed" for California state:
+
+
+```{r}
+kids%>%
+  group_by(year)%>%
+  filter(variable =="PK12ed",
+         state=="California")%>%
+  summarise(total=sum(inf_adj/1000000))%>%
+  ggplot(
+    aes(year,total))+
+  geom_line()+
+  scale_y_continuous(labels=dollar)+
+  labs(y="Total Expenditure (in Billions)")
+```
+
+c. Total spending on education "PK12ed" for selected states
+
+
+```{r}
+kids%>%
+  group_by(year,state)%>%
+  filter(variable =="PK12ed",
+         state %in% c("California","Texas","New York","District of Columbia","Florida"))%>%
+  summarise(total=sum(inf_adj)/1000000)%>%
+  ggplot(
+    aes(year,total,color=state))+
+  geom_line()+
+  scale_y_continuous(labels=dollar)+
+  labs(y="Total Expenditure in Billions")
+```
+
+
+d. Total spending on education per child "PK12ed" for selected states
+
+
+```{r}
+kids%>%
+  group_by(year)%>%
+  filter(variable =="PK12ed",
+         state %in% c("California","Texas","New York","District of Columbia","Florida"))%>%
+  ggplot(
+    aes(year,inf_adj_perchild,color=state))+
+  geom_line()+
+  expand_limits(y=0)+
+  scale_y_continuous()+
+  labs(x="year",
+       y="Inflation adjusted spending per child (in thousands)")
+```
+
+Next, to explore further the relationship among the different variables the researchers have reduced the number of variables from 23 to 4 by creating and refining the variables into 4 sub-categories; ie. education, health,unemployment and others based on the descriptions in the tidykids codebook. 
+
+The researchers also filter 1997 data since there are lots of missing data.
+
+```{r}
+grouping_sector<-kids%>%
+  mutate(sector = 
+           case_when (variable == "edservs" ~ "education",
+                      variable == "edsubs" ~ "education",
+                      variable == "PK12ed" ~ "education",
+                      variable == "highered"~"education",
+                      variable == "pell"~"education",
+                      variable == "HeadStartPriv"~"education",
+                      variable == "pubhealth" ~ "health",
+                      variable == "HCD" ~ "health",
+                      variable == "Medicaid_CHIP"~"health",
+                      variable == "Other_health"~"health",
+                      variable == "unemp"~"unemployment",
+                      variable == "wcomp"~"unemployment",
+                      TRUE ~ "others")
+           )%>%
+  filter(year != "1997")
+```
+
+
+```{r}
+grouping_sector<-grouping_sector%>%
+  mutate(inf_adj_perchild_level=cut_number(inf_adj_perchild,3,labels = c("low","med","high"),ordered_result=TRUE))
+```
+
+```{r}
+grouping_sector<-grouping_sector%>%
+  mutate(number_of_kids=(inf_adj/inf_adj_perchild))
+```
+
+This helps to explore further how the US government spends in the 4 sub-categories on kids for all states. 
+
+Key takeaways for insights on the following the trend analysis are:
+
+a. There has been an upward trend in the spending in these sectors over the period.
+b. Generally, US government's spending has been directed at two main sub-categories - education and other sub-categories which includes social security payments for kids, EITC (Expand earned Income Tax Credits to promote work and reduce poverty), Child Tax Credit, Medicaid, park and libraries facilities. 
+c. While PK12ed has been leading the way of spending pre 2009, other sub-categories seemed to take the lead in government spending after 2009. 
+d. There has been a large spike in unemp spending around 2010.
+e. A further exploration of the context around the global shows that the global financial crisis and Great Recession around 2007-2009 has caused a great change in how US government spent available funds.
+
+```{r}
+grouping_sector%>%
+  group_by(year,sector)%>%
+  summarise(inf_adj=sum((inf_adj)/1000000,na.rm=TRUE))%>%
+  ungroup()%>%
+  ggplot(
+    aes(x=year,
+        y=inf_adj,
+        color=sector
+        )
+  )+
+  geom_line()+
+  scale_y_continuous()+
+  labs(x="year",
+       y="Inflation adjusted spending (in Billions)")
+```
+
+The researchers explore spending on kids for New York state to understand further analyse the trend of spending in different sub-categories. It has been found that there has been generally upward trends in education and other spending with unemployment spending taking a spike around 2010. 
+
+```{r}
+grouping_sector%>%
+  filter(state=='New York')%>%
+  group_by(year,sector)%>%
+  summarise(inf_adj=sum(inf_adj/(1000000),na.rm=TRUE))%>%
+  ungroup()%>%
+  ggplot(
+    aes(x=year,
+        y=inf_adj,
+        color=sector
+        )
+  )+
+  geom_line()+
+  scale_y_continuous(labels = dollar)+
+  labs(x="year",
+       y="Inflation adjusted spending (in Billions)")
+```
+
+As some places may have more student population than others, the total spending may not mean much.  Next, the researchers look into total spending on education "PK12ed" per kid (rather than total spending) for all states to understand the general patterns of the spending per kid for all states.
+
+Key Takeaways:
+a. A lot of states' spending plato throughout the years. This could be due to the global financial crisis around 2008 - 2009 which caused states budget crisis.  
+b. District of Columbia seems to make a peak in spending per child around 2010 while some states for example New York, Rhode Island and Wyoming made a gradual upwards slope.  District of Columbia seems to be an outlier 
+
+```{r}
+kids%>%
+  group_by(year)%>%
+  filter(variable =="PK12ed",
+         state %in% sample(unique(state),51))%>%
+  mutate(state=fct_reorder(state,inf_adj_perchild,max,.desc=TRUE))%>%
+  ggplot(
+    aes(year,inf_adj_perchild))+
+  geom_line()+
+  facet_wrap(~state)+
+  expand_limits(y=0)+
+  labs(x="year",
+       y="Inflation adjusted spending per child (in Billions")
+```
+
+
+The researchers also explore the total spending on education "PK12ed" per child for all states using red dotted line across the year2009 to understand the general trends pre and post 2009 global financial crisis. 
+
+
+```{r}
+kids%>%
+  group_by(year)%>%
+  filter(variable=="PK12ed")%>%
+  mutate(state=fct_reorder(state,inf_adj_perchild,max,.desc=TRUE))%>%
+  ggplot(
+    aes(year,inf_adj_perchild))+
+  geom_line()+
+  geom_vline(xintercept=2009,color="red",lty=3)+
+  scale_y_continuous()+
+  facet_wrap(~state, nrow=9)+
+  expand_limits(y=0)+
+  theme_tufte()+
+  labs(x="year",
+       y="Inflation adjusted spending per child (in Billion)",
+       title="How is the state spending per child for K-12ed pre and post 2009 trends?",
+       subtitle="red dotted line shows 2009 global financial crisis")
+    
+```
+
+
+To explore further, the researchers analyse the percentage change in "PK12ed" spending per child changed per state from 1997 to 2016. District of Columbia seems to be the outlier which started with a low spending on "PK12ed" and it tripped the amount in the 20 years.
+
+
+```{r}
+kids%>%
+  group_by(year)%>%
+  filter(variable=="PK12ed")%>%
+  mutate(change=inf_adj_perchild/first(inf_adj_perchild)-1)%>%
+  ungroup()%>%
+  mutate(state=fct_reorder(state,inf_adj_perchild,max,.desc=TRUE))%>%
+  ggplot(
+    aes(year,change))+
+  geom_line()+
+  geom_vline(xintercept=2009,color="red",lty=3)+
+  geom_hline(yintercept=0,color="grey")+
+  scale_y_continuous(labels = percent,breaks=c(0,1,2))+
+  facet_wrap(~state, nrow=9)+
+  expand_limits(y=0)+
+  theme_tufte()+
+  labs(x="year",
+       y="Inflation adjusted spending per child relative to 1997",
+       title="How has the state spending per child changed for K-12ed?",
+       subtitle="red dotted line shows 2009 global financial crisis")
+```
+
+Modelling
+
+1. Linear regression
+
+Predict future spending on education per child adjusted for inflationin future years based on the year-on-year positive relationship between the state spending.  Here, the researchers decide to reate a scatter plot displaying the education adjusted for inflation per child versus year where spending is the outcome or dependent (Y) variable.    
+
+```{r}
+grouping_sector%>%
+  group_by(year,sector)%>%
+  summarise(inf_adj_perchild=sum(inf_adj_perchild,na.rm=TRUE))%>%
+  filter(sector == "education")%>%
+  ggplot(
+    aes(x=year,
+        y=inf_adj_perchild,
+        )
+  )+
+  geom_point()+
+  stat_smooth()+
+  scale_y_continuous(labels = dollar)
+```
+
+The *correlation coefficient* measures the level of the association between two variables x and y. Here, the correlation shows that there is a 9%, positive relationship between the variables. 
+
+```{r}
+cor(grouping_sector$inf_adj_perchild, grouping_sector$year)
+```
+
+```{r}
+plot(grouping_sector)
+```
+
+
+
+##Findings
+
+From analysis, there are a few key takeaways:
+
+1. US government's spending has mainly been directed at two variables, PK12ed and other health.
+2. California has the highest spending on kids while the District of Columbia exhibits the highest spending per child during the period.
+3. The spending on kids for many states have gradually increased but it also experienced slight drop during the global economic crisis.
+4. There has been a large spike in unemployment spending between 2008 to 2010 when healthcare took a lead after the crisis.
+
+=======
+
+##Recommendations
+
+1. Instead of investing in many sectors, the US government should consider focusing on main categories such as education and health. They should channel the funds towards the states who needs the funds the most rather than allocating it based on best practice without review.
+2. The US government should consider reasons for its allocation of funds for kids since education can be important factors for parents when they decide where to live and work so as to give their kids the best educational resources. 
+3. US government to analyse whether the states' funding has been utilised for intended use to shape a better society for America.
+
+
+##Conclusion
+
+Overall, this project gives us an overview of how US spends their financial budget on kids. How US spends on kids show their commitments towards building the future of their country.
+
+======
